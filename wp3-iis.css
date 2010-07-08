@@ -1,27 +1,12 @@
 /*
 File:			wp3-iis.css
-Description:	Custom styles for WP3 IISPlugin
+Description:	Custom styles for WP3 IIS Plugin
 Version:  1.0
 
 */
 
 
 /*@ Options screen */
-ul.category_links_list {
-	list-style-type: none; 
-	margin: 0; 
-	padding: 0;
-}
-
-ul.category_links_list li{ 
-	margin: 0 5px 5px 5px; 
-	padding: 5px; 
-	font-size: 1.2em; 
-	height: 1.5em;
-	cursor: move;
-	background-color: #DFDFDF;
-	border: 1px solid #BFBFBF;
-}
 
 tr.list_item_missing td.column-description {
 	color: red;
@@ -39,14 +24,6 @@ span.info_message{
 /* @end */
 
 
-/*@ Meta box */
-ul#categorychecklist li.category-missing { 
-	color: red;
-	margin-left: 26px;
-}
-
-
-/* @end */
 
 
 
