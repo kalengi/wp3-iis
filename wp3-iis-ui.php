@@ -40,9 +40,12 @@ function wp3iis_remove_settings(){
 			<div id="message" class="updated fade">
 				<?php 
 					$wp3iis_options = array('Website description' => 'wp3iis_website_name',
-											'Server IP' => 'wp3iis_server_ip');
+								'Server IP' => 'wp3iis_server_ip',
+								'DB version' => 'wp3iis_db_version');
 					foreach($wp3iis_options as $option_key => $option_value){
-						$delete_setting = delete_option($option_value);
+						$delete_setting = delete_site_option($option_value);
+                                                //there may be unused local options:
+                                                delete_option($option_value);
 						if($delete_setting) {
 							?> 
 							<p class="setting_removed">Setting: <?php echo $option_key; ?> => Removed</p>
@@ -54,6 +57,23 @@ function wp3iis_remove_settings(){
 							<?php
 						}
 					}
+
+                                        //remove headers table
+                                        global  $wpdb;
+
+                                        $table_name = $wpdb->prefix . 'wp3iis_pending_headers';
+                                        if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+                                            $wpdb->query("DROP TABLE IF EXISTS $table_name");
+                                            ?>
+                                                <p class="setting_removed">Table: <?php echo $table_name; ?> => Removed</p>
+                                            <?php
+                                        }
+                                        else{
+                                            ?>
+                                                <p class="setting_not_removed">Table: <?php echo $table_name; ?> => Not found</p>
+                                            <?php
+                                        }
+                                        
 				?>
 			</div>
 		<?php
@@ -74,39 +94,17 @@ function wp3iis_remove_settings(){
 	}
 }
 
-function wp3iis_register_domain($domain) {
-	$cmd = 'remove' ;
-	$website = 'DW Dining';
-	$hostname = $domain ;
-	$ip = '192.168.182.129' ;
-	$reg_cmd = 'iisbroker.exe' . ' /action:' . $cmd . ' /website:"' . $website . '" /hostname:' . $hostname . ' /ip:' . $ip ;
-	$output = array();
-	$error = 0;
-	exec($reg_cmd . " 2>&1", $output, $error);
-	if (($error != 0) && empty($output)){
-		$last_error = error_get_last();
-		$error = ': ERROR - ' . $last_error['message'];
-	}
-	else{
-		$error = '';
-	}
-	return print_r($output, 1) .  $error ;
-}
-
 function wp3iis_show_settings_page() {
-		$domain = "papalennons.dwdining.nerdonia";
-		$domain_result = wp3iis_register_domain($domain);
-		xdebug_break();
+		
 	?>
 		<!-- Options Form -->
 		<form method="post" action="options.php">
 			<?php settings_fields( 'wp3iis_settings' ); ?>
-			<?php $wp3iis_website_name = get_option('wp3iis_website_name'); ?>
-			<?php $wp3iis_server_ip = get_option('wp3iis_server_ip'); ?>
+			<?php $wp3iis_website_name = get_site_option('wp3iis_website_name'); ?>
+			<?php $wp3iis_server_ip = get_site_option('wp3iis_server_ip'); ?>
 			<div class="wrap">
 				<?php screen_icon(); ?>
 				<h2>WP3 IIS Options</h2>
-				<p> Doamin registration result: <?php echo $domain; ?> : <?php echo $domain_result; ?></p>
 				<h3>IIS Website Details</h3>
 				
 				<table class="form-table">
