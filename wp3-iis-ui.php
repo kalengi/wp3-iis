@@ -61,7 +61,7 @@ function wp3iis_remove_settings(){
                                         //remove headers table
                                         global  $wpdb;
 
-                                        $table_name = $wpdb->prefix . 'wp3iis_pending_headers';
+                                        $table_name = $wpdb->prefix . PENDING_HEADERS_TABLE;
                                         if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
                                             $wpdb->query("DROP TABLE IF EXISTS $table_name");
                                             ?>
@@ -96,54 +96,85 @@ function wp3iis_remove_settings(){
 
 function wp3iis_show_settings_page() {
 		
-	?>
-		<!-- Options Form -->
-		<form method="post" action="options.php">
-			<?php settings_fields( 'wp3iis_settings' ); ?>
-			<?php $wp3iis_website_name = get_site_option('wp3iis_website_name'); ?>
-			<?php $wp3iis_server_ip = get_site_option('wp3iis_server_ip'); ?>
-			<div class="wrap">
-				<?php screen_icon(); ?>
-				<h2>WP3 IIS Options</h2>
-				<h3>IIS Website Details</h3>
-				
-				<table class="form-table">
-					<tr valign="top">
-						<th scope="row">Website description</th>
-						<td>
-							<input name="wp3iis_website_name" type="text" value="<?php echo $wp3iis_website_name; ?>"  />
-						</td>
-					</tr>
-					<tr valign="top">
-						<th scope="row">Server IP</th>
-						<td>
-							<input name="wp3iis_server_ip" type="text" value="<?php echo $wp3iis_server_ip; ?>"  />
-						</td>
-					</tr>
-				</table>
-				
-				<p class="submit">
-					<input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
-				</p>
-			</div>
-		</form>
-		
-		<!-- Uninstall Plugin -->
-		<form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo plugin_basename(__FILE__); ?>">
-			<div id="wp3iis_uninstall" class="wrap"> 
-				<h3>Uninstall WP3 IIS plugin</h3>
-				<p>
-					The uninstall action removes all WP3 IIS plugin settings that have been saved in your WordPress database. Use this prior to deactivating the plugin.
-				</p>
-				<p class="warning">
-					Please note that the deleted settings cannot be recovered. Proceed only if you do not wish to use these settings any more.
-				</p>
-				<p class="uninstall_confirmation">
-					<input type="submit" name="uninstall" value="UNINSTALL WP3 IIS" class="button" onclick="return confirm('You Are About To Uninstall WP3 IIS From WordPress.\n\n Choose [Cancel] To Stop, [OK] To Uninstall.')" />
-				</p>
-			</div> 
-		</form>
-	<?php
+    ?>
+
+        <div id="wp3iis-admin" class="wrap">
+            <?php screen_icon(); ?>
+            <h2>WP3 IIS</h2>
+            <ul id="tabs" class="wp3iis_tabs">
+                <li><a href="#wp3iis_options">IIS Website Options</a></li>
+                <li><a href="#wp3iis_pending_headers">Pending Headers</a></li>
+                <li><a href="#wp3iis_uninstall">Uninstall</a></li>
+            </ul>
+
+            <!-- Options Form -->
+            <div id="wp3iis_options">
+                 <h3>IIS Website Options</h3>
+                <form method="post" action="options.php">
+                    <?php settings_fields( 'wp3iis_settings' ); ?>
+                    <?php $wp3iis_website_name = get_site_option('wp3iis_website_name'); ?>
+                    <?php $wp3iis_server_ip = get_site_option('wp3iis_server_ip'); ?>
+
+                    <table class="form-table">
+                        <tr valign="top">
+                            <th scope="row">Website description</th>
+                            <td>
+                                  <input name="wp3iis_website_name" type="text" value="<?php echo $wp3iis_website_name; ?>"  />
+                            </td>
+                        </tr>
+                        <tr valign="top">
+                            <th scope="row">Server IP</th>
+                            <td>
+                                 <input name="wp3iis_server_ip" type="text" value="<?php echo $wp3iis_server_ip; ?>"  />
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                         <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
+                    </p>
+                </form>
+            </div>
+
+            <!-- Pending Headers List -->
+            <div id="wp3iis_pending_headers">
+                <h3>Pending Headers</h3>
+
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row">Website description</th>
+                        <td>
+                              Dummy
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Server IP</th>
+                        <td>
+                             Dummy
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Uninstall Plugin -->
+            <div id="wp3iis_uninstall">
+                <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo plugin_basename(__FILE__); ?>">
+
+                    <h3>Uninstall WP3 IIS plugin</h3>
+                    <p>
+                            The uninstall action removes all WP3 IIS plugin settings that have been saved in your WordPress database. Use this prior to deactivating the plugin.
+                    </p>
+                    <p class="warning">
+                            Please note that the deleted settings cannot be recovered. Proceed only if you do not wish to use these settings any more.
+                    </p>
+                    <p class="uninstall_confirmation">
+                            <input type="submit" name="uninstall" value="UNINSTALL WP3 IIS" class="button" onclick="return confirm('You Are About To Uninstall WP3 IIS From WordPress.\n\n Choose [Cancel] To Stop, [OK] To Uninstall.')" />
+                    </p>
+                </form>
+            </div>
+        </div>
+
+    <?php
 }
 
 ?>
