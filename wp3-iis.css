@@ -170,6 +170,12 @@ Version:  1.0
 
 /*@ Options screen */
 
+div#wp3iis_message {
+    background-color: #FFFBCC;
+    border-color: #E6DB55;
+    color: #555555;
+}
+
 span.error_message{
 	color: red;
 	display: none;

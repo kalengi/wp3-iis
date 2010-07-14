@@ -30,8 +30,61 @@ function wp3iis_settings_page() {
 		wp3iis_remove_settings();
 		return;
 	}
-	
-	wp3iis_show_settings_page();
+
+        if(isset( $_POST['doaction'] ) || isset( $_POST['doaction2'] )){
+            $bulk_ids = isset( $_POST['bulk_ids'] ) ? (array) $_POST['bulk_ids'] : array();
+            $action = $_POST['required_action'] != -1 ? $_POST['required_action'] : $_POST['required_action2'];
+
+            foreach ( $bulk_ids as $key => $id ) {
+                wp3iis_do_ui_command($id, $action);
+            }
+        }
+        else{
+            $id = isset( $_GET['id'] ) ? intval( $_GET['id'] ) : 0;
+            $action = isset( $_GET['action'] ) ? $_GET['action'] : 'list';
+
+            wp3iis_do_ui_command($id, $action);
+        }
+
+        wp3iis_show_ui();
+}
+
+function wp3iis_do_ui_command($id, $action){
+    global  $wpdb;
+
+    
+    if($id > 0){
+        $table_name = $wpdb->prefix . PENDING_HEADERS_TABLE;
+
+        switch ( $action ) {
+            case 'execute':
+                $query = "SELECT * FROM {$table_name} WHERE header_id = {$id}";
+                $header = $wpdb->get_results( $query, ARRAY_A );
+                if($header){
+                    $header = $header[0];
+                    $required_action = $header['required_action'];
+                    $blog_details = get_blog_details($header['blog_id']);
+                    if($blog_details){
+                        if($required_action == 'add'){
+                             wp3iis_update_host_header($header['blog_id'], $blog_details->domain, $required_action);
+                        }
+                    }
+                    else{
+                        if($required_action == 'remove'){
+                             wp3iis_update_host_header($header['blog_id'], $header['header_name'], $required_action);
+                        }
+                    }
+
+                    $wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE header_id = %d", $id ) );
+
+                }
+                break;
+            case 'delete':
+                $wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE header_id = %d", $id ) );
+
+                break;
+        }
+    }
 }
 
 function wp3iis_remove_settings(){
@@ -94,7 +147,7 @@ function wp3iis_remove_settings(){
 	}
 }
 
-function wp3iis_show_settings_page() {
+function wp3iis_show_ui() {
 		
     ?>
 
@@ -110,6 +163,224 @@ function wp3iis_show_settings_page() {
             <!-- Options Form -->
             <div id="wp3iis_options">
                  <h3>IIS Website Options</h3>
+                 <?php wp3iis_options_tab(); ?>
+            </div>
+
+            <!-- Pending Headers List -->
+            <div id="wp3iis_pending_headers">
+                <h3>Pending Headers</h3>
+                <?php wp3iis_pending_header_list_tab(); ?>
+                
+            </div>
+
+            <!-- Uninstall Plugin -->
+            <div id="wp3iis_uninstall">
+                <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo plugin_basename(__FILE__); ?>">
+
+                    <h3>Uninstall WP3 IIS plugin</h3>
+                    <p>
+                            The uninstall action removes all WP3 IIS plugin settings that have been saved in your WordPress database. Use this prior to deactivating the plugin.
+                    </p>
+                    <p class="warning">
+                            Please note that the deleted settings cannot be recovered. Proceed only if you do not wish to use these settings any more.
+                    </p>
+                    <p class="uninstall_confirmation">
+                            <input type="submit" name="uninstall" value="UNINSTALL WP3 IIS" class="button" onclick="return confirm('You Are About To Uninstall WP3 IIS From WordPress.\n\n Choose [Cancel] To Stop, [OK] To Uninstall.')" />
+                    </p>
+                </form>
+            </div>
+        </div>
+
+    <?php
+}
+
+function wp3iis_pending_header_list_tab(){
+    global  $wpdb;
+    
+    $pagenum = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 0;
+    $pagenum =  empty($pagenum) ? 1 : $pagenum;
+    $per_page = 15;
+
+    $table_name = $wpdb->prefix . PENDING_HEADERS_TABLE;
+    $query = "SELECT * FROM {$table_name} ";
+    $query .= " ORDER BY {$table_name}.header_name ";
+
+    $total = $wpdb->get_var( str_replace( 'SELECT *', 'SELECT COUNT(header_id)', $query ) );
+
+    $query .= " LIMIT " . intval( ( $pagenum - 1 ) * $per_page ) . ", " . intval( $per_page );
+    $header_list = $wpdb->get_results( $query, ARRAY_A );
+
+    $num_pages = ceil($total / $per_page);
+    $page_links = paginate_links( array(
+            'base' => add_query_arg( 'paged', '%#%' ),
+            'format' => '',
+            'prev_text' => __( '&laquo;' ),
+            'next_text' => __( '&raquo;' ),
+            'total' => $num_pages,
+            'current' => $pagenum
+    ));
+
+    $action_page = $_SERVER['PHP_SELF'] . '?page=' . plugin_basename(__FILE__);
+
+    ?>
+                <form id="form-pending-header-list" action="<?php echo $action_page; ?>" method="post">
+                    <div class="tablenav">
+                        <div class="alignleft actions">
+                                <select name="required_action">
+                                        <option value="-1" selected="selected"><?php _e( 'Bulk Actions' ); ?></option>
+                                        <option value="execute">Execute</option>
+                                        <option value="delete">Delete</option>
+                                </select>
+                                <input type="submit" value="Apply" name="doaction" id="doaction" class="button-secondary action" />
+                                <?php wp_nonce_field( 'bulk-wp3iis-headers', '_wpnonce_bulk-wp3iis-headers' ); ?>
+                        </div>
+
+                        <?php if ( $page_links ) { ?>
+                        <div class="tablenav-pages">
+                            <?php $page_links_text = sprintf( '<span class="displaying-num">' . __( 'Displaying %s&#8211;%s of %s' ) . '</span>%s',
+                            number_format_i18n( ( $pagenum - 1 ) * $per_page + 1 ),
+                            number_format_i18n( min( $pagenum * $per_page, $total ) ),
+                            number_format_i18n( $total ),
+                            $page_links
+                            ); echo $page_links_text; ?>
+                        </div>
+                        <?php } ?>
+
+                    </div>
+                    <div class="clear"></div>
+
+                    <?php
+                    // define the columns to display, the syntax is 'internal name' => 'display name'
+                    $columns = array(
+                            'blog_id'           => __( 'Blog Id' ),
+                            'header_name'     => __( 'Domain' ),
+                            'required_action'  => __( 'Pending Action'),
+                            'last_error'   => __( 'Last Error')
+                    );
+
+
+                    ?>
+                    <table class="widefat">
+                        <thead>
+                                <tr>
+                                <th class="manage-column column-cb check-column" id="cb" scope="col">
+                                        <input type="checkbox" />
+                                </th>
+                                <?php
+                                $col_url = '';
+                                foreach($columns as $column_id => $column_display_name) {
+                                        $column_link = "<a href='";
+                                        $order2 = '';
+                                        if ( $order_by == $column_id )
+                                                $order2 = ( $order == 'DESC' ) ? 'ASC' : 'DESC';
+
+                                        $column_link .= esc_url( add_query_arg( array( 'order' => $order2, 'paged' => $pagenum, 'sortby' => $column_id ), remove_query_arg( array('action', 'updated'), $_SERVER['REQUEST_URI'] ) ) );
+                                        $column_link .= "'>{$column_display_name}</a>";
+                                        $col_url .= '<th scope="col">' . $column_link . '</th>';
+                                }
+                                echo $col_url ?>
+                                </tr>
+                        </thead>
+                        <tfoot>
+                                <tr>
+                                <th class="manage-column column-cb check-column" id="cb1" scope="col">
+                                        <input type="checkbox" />
+                                </th>
+                                        <?php echo $col_url ?>
+                                </tr>
+                        </tfoot>
+                        <tbody id="wp3iis-pending-header-list" class="list:site">
+                            <?php
+                            if ( $header_list ) {
+                                $class = '';
+                                foreach ( $header_list as $header ) {
+                                    $class = ( 'alternate' == $class ) ? '' : 'alternate';
+                                    echo "<tr class='$class'>";
+                                    foreach ( $columns as $column_name => $column_display_name ) {
+                                        switch ( $column_name ) {
+                                            case 'blog_id':
+                                                ?>
+                                                        <th scope="row" class="check-column">
+                                                                <input type="checkbox" id="blog_header_<?php echo $header['header_id'] ?>" name="bulk_ids[]" value="<?php echo esc_attr( $header['header_id'] ) ?>" />
+                                                        </th>
+                                                        <th valign="top" scope="row">
+                                                                <?php echo $header['blog_id'] ?>
+                                                        </th>
+                                                <?php
+                                                break;
+                                            case 'header_name':
+                                                ?>
+                                                    <td class="column-title">
+                                                        <a href="<?php echo esc_url( admin_url( 'ms-sites._php?action=execute&amp;id=' . $header['header_id'] ) ); ?>" class="edit"><?php echo $header['header_name']; ?></a>
+                                                        <?php
+                                                            // Preordered.
+                                                            $actions = array(
+                                                                    'execute' => '',
+                                                                    'delete' => ''
+                                                            );
+
+                                                            $actions['execute'] = '<span class="execute"><a href="' . esc_url( $action_page . '&amp;action=execute&amp;id=' . $header['header_id'] ) . '">' . __( 'Execute' ) . '</a></span>';
+                                                            $actions['delete'] = '<span class="delete"><a href="' . esc_url( $action_page . '&amp;action=delete&amp;id=' . $header['header_id'] ) . '">' . __( 'Delete' ) . '</a></span>';
+                                                            $actions = array_filter( $actions );
+                                                            if ( count( $actions ) ) : ?>
+                                                            <div class="row-actions">
+                                                                    <?php echo implode( ' | ', $actions ); ?>
+                                                            </div>
+                                                            <?php endif; ?>
+
+                                                    </td>
+                                                <?php
+                                                break;
+                                            case 'required_action':
+                                                ?>
+                                                        <td valign="top">
+                                                                <?php echo $header['required_action']; ?>
+                                                        </td>
+                                                <?php
+                                                break;
+                                            case 'last_error':
+                                                ?>
+                                                        <td valign="top">
+                                                                <?php echo $header['last_error']; ?>
+                                                        </td>
+                                                <?php
+                                                break;
+                                        }
+                                    }
+                                }
+                            }
+                            else {
+                            ?>
+                                <tr>
+                                        <td colspan="<?php echo (int) count( $columns ); ?>"><?php _e( 'No pending headers found.' ) ?></td>
+                                </tr>
+                            <?php
+                            } // end if ($header_list)
+                            ?>
+
+                        </tbody>
+                    </table>
+                    <div class="tablenav">
+                            <?php
+                            if ( $page_links )
+                                    echo "<div class='tablenav-pages'>$page_links_text</div>";
+                            ?>
+
+                            <div class="alignleft actions">
+                                <select name="required_action2">
+                                        <option value="-1" selected="selected"><?php _e( 'Bulk Actions' ); ?></option>
+                                        <option value="execute">Execute</option>
+                                        <option value="delete">Delete</option>
+                                </select>
+                                <input type="submit" value="Apply" name="doaction2" id="doaction2" class="button-secondary action" />
+                            </div>
+                            <br class="clear" />
+                    </div>
+                </form>
+   <?php
+}
+function wp3iis_options_tab(){
+    ?>
                 <form method="post" action="options.php">
                     <?php settings_fields( 'wp3iis_settings' ); ?>
                     <?php $wp3iis_website_name = get_site_option('wp3iis_website_name'); ?>
@@ -134,46 +405,6 @@ function wp3iis_show_settings_page() {
                          <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
                     </p>
                 </form>
-            </div>
-
-            <!-- Pending Headers List -->
-            <div id="wp3iis_pending_headers">
-                <h3>Pending Headers</h3>
-
-                <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row">Website description</th>
-                        <td>
-                              Dummy
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row">Server IP</th>
-                        <td>
-                             Dummy
-                        </td>
-                    </tr>
-                </table>
-            </div>
-
-            <!-- Uninstall Plugin -->
-            <div id="wp3iis_uninstall">
-                <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo plugin_basename(__FILE__); ?>">
-
-                    <h3>Uninstall WP3 IIS plugin</h3>
-                    <p>
-                            The uninstall action removes all WP3 IIS plugin settings that have been saved in your WordPress database. Use this prior to deactivating the plugin.
-                    </p>
-                    <p class="warning">
-                            Please note that the deleted settings cannot be recovered. Proceed only if you do not wish to use these settings any more.
-                    </p>
-                    <p class="uninstall_confirmation">
-                            <input type="submit" name="uninstall" value="UNINSTALL WP3 IIS" class="button" onclick="return confirm('You Are About To Uninstall WP3 IIS From WordPress.\n\n Choose [Cancel] To Stop, [OK] To Uninstall.')" />
-                    </p>
-                </form>
-            </div>
-        </div>
-
     <?php
 }
 

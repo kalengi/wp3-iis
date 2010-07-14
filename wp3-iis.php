@@ -34,7 +34,7 @@ if ( is_admin() ) {
 	//settings menu
 	add_action('admin_menu', 'wp3iis_tools_menu');
 	//load css
-	add_action('admin_print_styles', 'wp3iis_load_admin_stylesheets' );
+	add_action('admin_print_styles', 'wp3iis_load_stylesheets' );
 	//load js
 	add_action('admin_print_scripts', 'wp3iis_load_scripts' );
 	
@@ -52,11 +52,11 @@ function wp3iis_load_scripts() {
 }
 
 /* Load css files*/
-function wp3iis_load_admin_stylesheets() {
+/*function wp3iis_load_admin_stylesheets() {
     $style_file = plugins_url('wp3-iis/wp3-iis.css');
     wp_enqueue_style( 'wp3iis-css', $style_file, false, '1.0.0', 'screen' );
 }
-
+*/
 function wp3iis_load_stylesheets() {
 	$style_file = plugins_url('wp3-iis/wp3-iis.css');
 	echo '<link rel="stylesheet" type="text/css" href="' . $style_file . '" />' . "\r\n";
@@ -74,6 +74,16 @@ function wp3iis_tools_menu() {
 	add_filter( 'plugin_action_links_' . $plugin, 'wp3iis_plugin_actions' );
 }
 
+
+/* Add Settings link to the plugins page*/
+function wp3iis_plugin_actions($links) {
+    $settings_link = '<a href="ms-admin.php?page=wp3-iis/wp3-iis-ui.php#wp3iis_options">Settings</a>';
+
+    $links = array_merge( array($settings_link), $links);
+
+    return $links;
+
+}
 
 function wp3iis_create_pending_headers_table() {
 
@@ -134,43 +144,38 @@ function register_wp3iis_settings() {
 }
 
 /* Update site option hack since register_setting isn't handling it*/
-global $wp3iis_lock_option;
-function wp3iis_update_website_name_option($option) {
-    global $wp3iis_lock_option;
+//global $wp3iis_lock_option;
 
-    if($wp3iis_lock_option){
-        $wp3iis_lock_option = false;
-        return $option;
+//$wp3iis_lock_option = false;
+function wp3iis_update_website_name_option($option) {
+    global $wp3iis_lock_website_name_option;
+
+    if($wp3iis_lock_website_name_option){
+        $wp3iis_lock_website_name_option = false;
+    }
+    else{
+        $wp3iis_lock_website_name_option = true;
+        update_site_option('wp3iis_website_name', $option);
     }
 
-    $wp3iis_lock_option = true;
-    update_site_option('wp3iis_website_name', $option);
-    return 'NOT_USED';
+    return $option;
 }
 
 function wp3iis_update_server_ip_option($option) {
-    global $wp3iis_lock_option;
+    global $wp3iis_lock_server_ip_option;
 
-    if($wp3iis_lock_option){
-        $wp3iis_lock_option = false;
-        return $option;
+    if($wp3iis_lock_server_ip_option){
+        $wp3iis_lock_server_ip_option = false;
+    }
+    else{
+        $wp3iis_lock_server_ip_option = true;
+        update_site_option('wp3iis_server_ip', $option);
     }
 
-    $wp3iis_lock_option = true;
-    update_site_option('wp3iis_server_ip', $option);
-    return 'NOT_USED';
+    return $option;
 }
 
 
-/* Add Settings link to the plugins page*/
-function wp3iis_plugin_actions($links) {
-    $settings_link = '<a href="ms-admin.php?page=wp3-iis/wp3-iis-ui.php#wp3iis_options">Settings</a>';
-
-    $links = array_merge( array($settings_link), $links);
-
-    return $links;
-
-}
 
 
 
@@ -237,7 +242,7 @@ function wp3iis_update_host_header($blog_id, $domain, $cmd){
         return;
     }
     ?>
-        <div id="wp3iis_message">
+        <div id="wp3iis_message" class="updated">
             <?php echo print_r($result, 1); ?>
 
         </div>
