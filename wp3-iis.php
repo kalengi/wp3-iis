@@ -3,7 +3,7 @@
 Plugin Name: WP3 IIS
 Plugin URI: http://www.dennisonwolfe.com/
 Description: The  WP3 IIS plugin adds sub-domains to Microsoft Internet Infaormation Server.
-Version: 1.0.0
+Version: 1.0.1
 Author: Dennison+Wolfe Internet Group
 Author URI: http://www.dennisonwolfe.com/
 */
@@ -90,8 +90,9 @@ function wp3iis_create_pending_headers_table() {
     global  $wpdb;
     $table_name = $wpdb->prefix . PENDING_HEADERS_TABLE;
 
+	//add the table if its not present (upgrade or reactivation)
     if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-        //add the table
+        
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $sql = "CREATE TABLE ".$table_name." (
                 header_id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -102,37 +103,33 @@ function wp3iis_create_pending_headers_table() {
                 PRIMARY KEY  (header_id)
                 ) $charset_collate;";
         $result = dbDelta($sql);
-        
+     }   
+	 
     //populate the table with current hostnames
-        $query = "SELECT blog_id, domain FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' ";
-        $query .= " ORDER BY {$wpdb->blogs}.blog_id ";
-        $blog_list = $wpdb->get_results( $query, ARRAY_A );
+	$query = "SELECT blog_id, domain FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' ";
+	$query .= " ORDER BY {$wpdb->blogs}.blog_id ";
+	$blog_list = $wpdb->get_results( $query, ARRAY_A );
 
-        if ( $blog_list ) {
-            foreach ( $blog_list as $blog ) {
+	if ( $blog_list ) {
+		foreach ( $blog_list as $blog ) {
 
-                $rows_affected = $wpdb->insert( $table_name,
-                                                array( 'blog_id' => $blog['blog_id'],
-                                                    'header_name' => $blog['domain'],
-                                                    'required_action' => 'add',
-                                                    'last_error' => '' ) );
-            }
-        }
+			$rows_affected = $wpdb->insert( $table_name,
+											array( 'blog_id' => $blog['blog_id'],
+												'header_name' => $blog['domain'],
+												'required_action' => 'add',
+												'last_error' => '' ) );
+		}
+	}
 
-        /*
-         * --IF THE DOMAIN EXISTS THEN DO NOT REMOVE
-         * --IF THE DOMAIN DOES NOT EXIST THEN DO NOT ADD
-         * 
-         */
-
-    }
+   
 }
 
 /* initialize the plugin settings*/
 function wp3iis_init() {
-	add_site_option('wp3iis_website_name', '[IIS Website name]');
-	add_site_option('wp3iis_server_ip', '[IIS Website IP address]');
-
+	if(!get_site_option('wp3iis_website_name')){
+		add_site_option('wp3iis_website_name', '[IIS Website name]');
+		add_site_option('wp3iis_server_ip', '[IIS Website IP address]');
+	}
         wp3iis_create_pending_headers_table();
         add_site_option('wp3iis_db_version', '1.0.0');
 }
