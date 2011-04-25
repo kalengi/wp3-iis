@@ -3,7 +3,7 @@
 Plugin Name: WP3 IIS
 Plugin URI: http://www.dennisonwolfe.com/
 Description: The  WP3 IIS plugin adds sub-domains to Microsoft Internet Infaormation Server.
-Version: 1.0.1
+Version: 1.1.0
 Author: Dennison+Wolfe Internet Group
 Author URI: http://www.dennisonwolfe.com/
 */
@@ -25,30 +25,36 @@ Author URI: http://www.dennisonwolfe.com/
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-define('PENDING_HEADERS_TABLE','wp3iis_pending_headers'); 
+define('PENDING_HEADERS_TABLE','wp3iis_pending_headers');
 
 if ( is_admin() ) {
 	//plugin activation
 	add_action('activate_wp3-iis/wp3-iis.php', 'wp3iis_init');
         //register_activation_hook( __FILE__, 'wp3iis_init' );
 	//settings menu
-	add_action('admin_menu', 'wp3iis_tools_menu');
+	if(function_exists( 'is_network_admin' )){
+            add_action('network_admin_menu', 'wp3iis_admin_menu'); // ever since WP 3.1.1
+        }
+        else{
+            add_action('admin_menu', 'wp3iis_admin_menu');
+        }
+
 	//load css
 	add_action('admin_print_styles', 'wp3iis_load_stylesheets' );
 	//load js
 	add_action('admin_print_scripts', 'wp3iis_load_scripts' );
-	
+
 }
 else{
 	//load css
 	add_action('wp_head', 'wp3iis_load_stylesheets');
-	
+
 }
 
 /* Load js files*/
 function wp3iis_load_scripts() {
     wp_enqueue_script('wp3iis', WP_PLUGIN_URL . '/' . plugin_basename( dirname(__FILE__) ) . '/wp3-iis.js', array('jquery-ui-tabs'), '1.0');
-	
+
 }
 
 /* Load css files*/
@@ -65,12 +71,12 @@ function wp3iis_load_stylesheets() {
 
 /* Configuration Screen*/
 
-function wp3iis_tools_menu() {
-	add_submenu_page( 'ms-admin.php', 'WP3 IIS UI', 'WP3 IIS', 'manage_options', 'wp3-iis/wp3-iis-ui.php');
-	
+function wp3iis_admin_menu() {
+	add_submenu_page( 'sites.php', 'WP3 IIS UI', 'WP3 IIS', 'manage_sites', 'wp3-iis/wp3-iis-ui.php');
+
 	//call register settings function
 	add_action( 'admin_init', 'register_wp3iis_settings' );
-	$plugin = plugin_basename(__FILE__); 
+	$plugin = plugin_basename(__FILE__);
 	add_filter( 'plugin_action_links_' . $plugin, 'wp3iis_plugin_actions' );
 }
 
@@ -92,7 +98,7 @@ function wp3iis_create_pending_headers_table() {
 
 	//add the table if its not present (upgrade or reactivation)
     if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-        
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $sql = "CREATE TABLE ".$table_name." (
                 header_id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -103,8 +109,8 @@ function wp3iis_create_pending_headers_table() {
                 PRIMARY KEY  (header_id)
                 ) $charset_collate;";
         $result = dbDelta($sql);
-     }   
-	 
+     }
+
     //populate the table with current hostnames
 	$query = "SELECT blog_id, domain FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' ";
 	$query .= " ORDER BY {$wpdb->blogs}.blog_id ";
@@ -121,7 +127,7 @@ function wp3iis_create_pending_headers_table() {
 		}
 	}
 
-   
+
 }
 
 /* initialize the plugin settings*/
@@ -179,7 +185,7 @@ function wp3iis_update_server_ip_option($option) {
 /* Register new blog*/
 function wp3iis_add_domain($blog_id, $user_id, $domain) {
     wp3iis_update_host_header($blog_id, $domain, 'add');
-    
+
 }
 add_action( 'wpmu_new_blog', 'wp3iis_add_domain', 10, 3 );
 
@@ -245,7 +251,7 @@ function wp3iis_update_host_header($blog_id, $domain, $cmd){
         </div>
 
     <?php
-    
+
 }
 
 ?>
