@@ -1,6 +1,6 @@
 # README #
 
-WP3-IIS is a Wordpress plugin that works in conjuction with IISBroker () to automatically update website host headers on IIS. It is accessed via the menu **Super Admin > WP3 IIS** and 
+WP3-IIS is a Wordpress plugin that works in conjuction with IISBroker (https://bitbucket.org/KalenGi/iisbroker) to automatically update website host headers on IIS. It is accessed via the menu **Super Admin > WP3 IIS** and 
 configured as follows: 
 
 * i) Website description: example.com (this is the site name as it appears on IIS) 
